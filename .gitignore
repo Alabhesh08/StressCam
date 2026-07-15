@@ -33,4 +33,4 @@ venv/
 .DS_Store
 Thumbs.db
 
-*.egg-info/stresscam.egg-info/
+*.egg-info/
