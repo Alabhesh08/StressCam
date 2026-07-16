@@ -6,78 +6,9 @@ from tqdm.auto import tqdm
 from stresscam.preprocessing.face_detection import FaceDetector
 from stresscam.preprocessing.skin_segmentation import SkinSegmenter
 from stresscam.preprocessing.rgb_extraction import RGBExtractor
+from stresscam.features.prv import extract_prv_features
 from stresscam.rppg.pos import pos
 
-
-def extract_prv_features(
-    pulse,
-    fps,
-    distance=None,
-    prominence=0.001,
-):
-    """
-    Extract pulse rate variability (PRV) features from an rPPG signal.
-
-    Parameters
-    ----------
-    pulse : ndarray
-        Recovered rPPG signal.
-    fps : float
-        Sampling frequency (frames per second).
-    distance : int, optional
-        Minimum distance between consecutive peaks (samples).
-        If None, defaults to 0.5 * fps (~120 BPM maximum).
-    prominence : float, optional
-        Minimum peak prominence.
-
-    Returns
-    -------
-    dict
-        Dictionary containing PRV features and intermediate results.
-    """
-
-    if distance is None:
-        distance = int(0.5 * fps)
-
-    peaks, _ = find_peaks(
-        pulse,
-        distance=distance,
-        prominence=prominence,
-    )
-
-    # Need at least two peaks to compute IBI
-    if len(peaks) < 2:
-        raise ValueError("Not enough peaks detected to compute PRV features.")
-
-    peak_times = peaks / fps
-
-    ibi = np.diff(peak_times)
-
-    hr = 60 / ibi
-
-    mean_hr = np.mean(hr)
-    mean_ibi = np.mean(ibi)
-
-    sdnn = np.std(ibi, ddof=1)
-
-    rmssd = np.sqrt(np.mean(np.diff(ibi) ** 2))
-
-    nn50 = np.sum(np.abs(np.diff(ibi)) > 0.05)
-
-    pnn50 = 100 * nn50 / len(np.diff(ibi))
-
-    return {
-        "Mean HR": mean_hr,
-        "Mean IBI": mean_ibi,
-        "SDNN": sdnn,
-        "RMSSD": rmssd,
-        "NN50": nn50,
-        "pNN50": pnn50,
-        "Peaks": peaks,
-        "Peak Times": peak_times,
-        "IBI": ibi,
-        "HR": hr,
-    }
 
 def process_trial(video_path, show_progress=True):
     """
@@ -166,8 +97,8 @@ def process_trial(video_path, show_progress=True):
     pulse = pos(rgb_trace, fps)
 
     features = extract_prv_features(
-        pulse,
-        fps,
+        pulse=pulse,
+        fps=fps,
     )
 
     features["Pulse"] = pulse
@@ -177,10 +108,3 @@ def process_trial(video_path, show_progress=True):
     features["Failed Frames"] = failed
 
     return features
-
-def extract_prv_features_from_bvp(
-        bvp,
-        bvp_fs,
-        target_fs=None,
-    ):
-    
