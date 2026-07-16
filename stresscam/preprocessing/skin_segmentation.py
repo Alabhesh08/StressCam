@@ -109,3 +109,23 @@ class SkinSegmenter:
             cv2.fillConvexPoly(mask, pts, 0)
 
         return mask
+    
+    def segment(self, frame):
+        """
+        Complete skin segmentation pipeline.
+
+        Returns
+        -------
+        mask : np.ndarray
+            Binary skin mask.
+        """
+
+        results = self.detect_landmarks(frame)
+
+        if not results.multi_face_landmarks:
+            return None, None
+
+        mask = self.create_face_mask(frame, results)
+        mask = self.remove_features(mask, results)
+
+        return mask, results
